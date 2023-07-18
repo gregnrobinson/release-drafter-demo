@@ -1,0 +1,26 @@
+name: new-release-notification
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  new-release-notification:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Get Release Labels
+      run: |
+        pr_number="$(gh pr list --repo $GITHUB_REPOSITORY -s merged -B main | cut -f 1 | head -1)"
+        label="$(gh api repos/$GITHUB_REPOSITORY/pulls/$pr_number --jq '.labels.[].name')"
+        echo "LABEL=$(echo $label)" >> $GITHUB_ENV
+        echo "VERSION=$(echo ${GITHUB_REF#refs/tags/})" >> $GITHUB_ENV
+      env:
+        GH_TOKEN: ${{ github.token }}
+    - name: Notify Slack
+      shell: bash
+      run: |
+        curl -X POST -H 'Content-type: application/json' --data "{'text':'The team is happy to announce that version ${VERSION} is now available from our GitHub Repo. :rocket: https://github.com/gregnrobinson/flux/releases/tag/${VERSION}'}" "${{ secrets.SLACK_WEBHOOK }}"
+      env:
+        GH_TOKEN: ${{ github.token }}
